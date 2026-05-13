@@ -1,0 +1,30 @@
+{
+  "name": "queue-manager",
+  "version": "1.0.0",
+  "description": "Restaurant queue management system - local agent",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "start:pretty": "node src/index.js | pino-pretty",
+    "dev": "node --watch src/index.js | pino-pretty",
+    "check-cloud": "node scripts/check-cloud.js",
+    "test-mode": "node src/test-mode.js",
+    "vendor": "node scripts/vendor-fetch.js",
+    "package": "node scripts/package.js",
+    "test": "node --test tests/"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "iconv-lite": "^0.6.3",
+    "node-windows": "^1.0.0-beta.8",
+    "pino": "^8.17.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "pino-pretty": "^10.3.1"
+  },
+  "private": true,
+  "license": "UNLICENSED"
+}

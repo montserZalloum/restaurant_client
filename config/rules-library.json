@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "rule_arabic_v1",
+      "name": "Arabic order number — colon variant",
+      "regex": "رقم الطلب:?\\s*(\\d+)",
+      "description": "Matches: \"رقم الطلب: NNN\" or \"رقم الطلب NNN\""
+    },
+    {
+      "id": "rule_arabic_v2",
+      "name": "Arabic order number — possessive variant",
+      "regex": "طلب\\s+رقم\\s*[:#]?\\s*(\\d+)",
+      "description": "Matches: \"طلب رقم NNN\" or \"طلب رقم #NNN\""
+    },
+    {
+      "id": "rule_arabic_v3",
+      "name": "Arabic order number — hashed",
+      "regex": "(?:رقم|#)\\s*(\\d+)",
+      "description": "Matches lone numbers preceded by رقم or #"
+    },
+    {
+      "id": "rule_english_v1",
+      "name": "English order number",
+      "regex": "Order\\s*#?\\s*(\\d+)",
+      "description": "Matches: \"Order: NNN\" or \"Order #NNN\""
+    }
+  ]
+}

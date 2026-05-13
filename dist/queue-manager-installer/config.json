@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "restaurant": {
+    "id": "rest_knk8aa",
+    "name": "ABC restaurant",
+    "api_key": "ak_NT_rC1pCVMEW-vxmCd_A12X1-CNiJPzdG5RvKFfaHCI"
+  },
+  "cloud": {
+    "base_url": "http://192.168.1.249:3000",
+    "ws_url": "ws://192.168.1.249:3000/ws",
+    "settings_channel": "settings:rest_knk8aa"
+  },
+  "network": {
+    "cashier_ip": "192.168.1.10",
+    "printer_old_ip": "192.168.1.50",
+    "printer_new_ip": "192.168.1.51",
+    "printer_port": 9100,
+    "interface_name": "Ethernet"
+  },
+  "extractor": {
+    "rule_id": "rule_arabic_v1",
+    "regex": "رقم الطلب:?\\s*(\\d+)"
+  },
+  "service": {
+    "name": "QueueManager",
+    "display_name": "Queue Manager Service",
+    "recovery": {
+      "first_failure_delay_sec": 5,
+      "second_failure_delay_sec": 10,
+      "third_failure_delay_sec": 20,
+      "max_failures_in_period": 10,
+      "failure_period_minutes": 30
+    }
+  },
+  "local_server": {
+    "http_port": 9200,
+    "websocket_port": 9200,
+    "bind_address": "0.0.0.0"
+  },
+  "logging": {
+    "level": "info",
+    "max_file_size_mb": 50,
+    "max_files": 7
+  },
+  "staff_pin": "113549"
+}

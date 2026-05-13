@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1d4ed8">
+  <title>صفحة الموظف — Queue Manager</title>
+  <link rel="stylesheet" href="/staff/styles.css">
+  <script>window.__ENV__ = __QM_ENV_JSON__;</script>
+</head>
+<body>
+  <section id="pin-screen" class="pin-screen" hidden>
+    <div class="pin-card">
+      <h1>أدخل PIN</h1>
+      <p class="pin-hint">رمز التعريف الخاص بالموظف</p>
+      <form id="pin-form" autocomplete="off">
+        <input id="pin-input" type="password" inputmode="numeric"
+               pattern="[0-9]*" minlength="4" maxlength="8"
+               autocomplete="off" required aria-label="PIN">
+        <button id="pin-submit" type="submit">دخول</button>
+      </form>
+      <p id="pin-error" class="pin-error" role="alert" hidden></p>
+    </div>
+  </section>
+
+  <section id="app" class="app" hidden>
+    <div id="printer-banner" class="printer-banner" role="alert" hidden>
+      الطابعة غير متصلة
+    </div>
+
+    <header class="app-header">
+      <div class="restaurant-name" id="restaurant-name"></div>
+      <div class="connection-indicator" aria-label="حالة الاتصال">
+        <span class="dot dot-cloud" id="dot-cloud" data-state="absent" title="السحابة"></span>
+        <span class="dot dot-local" id="dot-local" data-state="absent" title="المحلي"></span>
+      </div>
+      <button class="menu-button" id="menu-button" aria-label="القائمة" aria-haspopup="true" aria-expanded="false">⋮</button>
+    </header>
+
+    <div class="columns">
+      <section class="column column-preparing" aria-label="قيد التحضير">
+        <header class="column-header">قيد التحضير</header>
+        <ul class="order-list" id="list-preparing"></ul>
+      </section>
+      <section class="column column-ready" aria-label="جاهز للاستلام">
+        <header class="column-header">جاهز للاستلام</header>
+        <ul class="order-list" id="list-ready"></ul>
+      </section>
+    </div>
+  </section>
+
+  <div id="menu-dropdown" class="menu-dropdown" role="menu" hidden>
+    <button class="menu-item" data-action="cancel" role="menuitem">إلغاء طلب</button>
+    <button class="menu-item" data-action="clear" role="menuitem">تصفير الشاشة</button>
+    <button class="menu-item" data-action="logout" role="menuitem">تسجيل خروج</button>
+  </div>
+
+  <div id="modal-overlay" class="modal-overlay" hidden aria-modal="true" role="dialog">
+    <div class="modal">
+      <h2 id="modal-title"></h2>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button class="modal-cancel" id="modal-cancel" type="button">إلغاء</button>
+        <button class="modal-confirm" id="modal-confirm" type="button">تأكيد</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <script src="/staff/app.js"></script>
+</body>
+</html>

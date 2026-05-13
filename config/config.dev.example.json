@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "restaurant": {
+    "id": "rest_dev01",
+    "name": "Dev Restaurant (Windows agent → Mac cloud)",
+    "api_key": "00000000000000000000000000000000000000000000000000000000000000ff"
+  },
+  "cloud": {
+    "base_url": "http://192.168.1.50:3000",
+    "ws_url": "ws://192.168.1.50:3000/ws",
+    "settings_channel": "settings:rest_dev01"
+  },
+  "network": {
+    "cashier_ip": "127.0.0.1",
+    "printer_new_ip": "127.0.0.1",
+    "printer_port": 9100,
+    "interface_name": "Wi-Fi"
+  },
+  "extractor": {
+    "rule_id": "rule_arabic_v1",
+    "regex": "رقم الطلب:?\\s*(\\d+)"
+  },
+  "service": {
+    "name": "QueueManager",
+    "display_name": "Queue Manager Service",
+    "recovery": {
+      "first_failure_delay_sec": 5,
+      "second_failure_delay_sec": 10,
+      "third_failure_delay_sec": 20,
+      "max_failures_in_period": 10,
+      "failure_period_minutes": 30
+    }
+  },
+  "local_server": {
+    "http_port": 9200,
+    "websocket_port": 9200,
+    "bind_address": "0.0.0.0"
+  },
+  "logging": {
+    "level": "debug",
+    "max_file_size_mb": 50,
+    "max_files": 7
+  },
+  "staff_pin": "123456"
+}

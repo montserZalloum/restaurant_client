@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "restaurant": {
+    "id": "rest_0k6lu7",
+    "name": "Q1",
+    "api_key": "ak_9BrpuuyA0yw8D_6XTxAXuAkJFQFDjDpFiBCConqNmyI"
+  },
+  "staff_pin": "837693",
+  "cloud": {
+    "base_url": "https://cloud.skrterak.com",
+    "ws_url": "wss://cloud.skrterak.com/ws",
+    "settings_channel": "settings:rest_0k6lu7"
+  },
+  "logging": { "level": "info", "max_files": 7, "max_file_size_mb": 50 },
+  "network": {
+    "cashier_ip": "192.168.1.50",
+    "printer_port": 9100,
+    "interface_name": "Ethernet 2",
+    "printer_new_ip": "192.168.1.190",
+    "printer_old_ip": "192.168.1.50"
+  },
+  "service": {
+    "name": "QueueManager",
+    "display_name": "Queue Manager Service",
+    "recovery": {
+      "first_failure_delay_sec": 5,
+      "second_failure_delay_sec": 10,
+      "third_failure_delay_sec": 20,
+      "max_failures_in_period": 10,
+      "failure_period_minutes": 30
+    }
+  },
+  "extractor": {
+    "regex": "رقم الطلب:?\\s*(\\d+)",
+    "rule_id": "rule_arabic_v1"
+  },
+  "local_server": {
+    "bind_address": "0.0.0.0",
+    "websocket_port": 9299
+  },
+  "debug": {
+    "dump_raw_payloads": true
+  }
+}
