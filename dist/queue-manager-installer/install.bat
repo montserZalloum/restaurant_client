@@ -112,7 +112,7 @@ if errorlevel 1 (
 echo [6/12] Config validated .............................. %CONFIG_SOURCE%
 
 REM Extract values for batch use
-for /f "usebackq tokens=1,* delims==" %%a in (`"%NODE_EXE%" "%PKG_ROOT%\setup-helper.js" extract-vars "%CONFIG_SOURCE%"`) do (
+for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_EXE%" "%PKG_ROOT%\setup-helper.js" extract-vars "%CONFIG_SOURCE%""`) do (
     set "QM_%%a=%%b"
 )
 if not defined QM_SERVICE_NAME (

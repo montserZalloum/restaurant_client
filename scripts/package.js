@@ -111,6 +111,14 @@ function main () {
   if (!fs.existsSync(example)) {
     fail(`config\\config.example.json not found at ${example}`)
   }
+  const tessdata = path.join(REPO_ROOT, 'src', 'core', 'extractor', 'tessdata', 'eng.traineddata.gz')
+  if (!fs.existsSync(tessdata)) {
+    fail(
+      'src\\core\\extractor\\tessdata\\eng.traineddata.gz missing — required for OCR to work offline.\n' +
+      '          Run "npm run vendor" to fetch it, or check the file into the repo.\n' +
+      '          (Without this, the installed agent will refuse to start OCR and raster orders will fall back to local serial numbers.)'
+    )
+  }
 
   // 2. Prepare output
   if (flags.clean && fs.existsSync(out)) {

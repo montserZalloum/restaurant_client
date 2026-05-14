@@ -1,25 +1,27 @@
 {
   "version": 1,
   "restaurant": {
-    "id": "rest_knk8aa",
-    "name": "ABC restaurant",
-    "api_key": "ak_NT_rC1pCVMEW-vxmCd_A12X1-CNiJPzdG5RvKFfaHCI"
+    "id": "rest_0k6lu7",
+    "name": "Q1",
+    "api_key": "ak_9BrpuuyA0yw8D_6XTxAXuAkJFQFDjDpFiBCConqNmyI"
   },
+  "staff_pin": "837693",
   "cloud": {
-    "base_url": "http://192.168.1.249:3000",
-    "ws_url": "ws://192.168.1.249:3000/ws",
-    "settings_channel": "settings:rest_knk8aa"
+    "base_url": "https://cloud.skrterak.com",
+    "ws_url": "wss://cloud.skrterak.com/ws",
+    "settings_channel": "settings:rest_0k6lu7"
+  },
+  "logging": {
+    "level": "info",
+    "max_files": 7,
+    "max_file_size_mb": 50
   },
   "network": {
-    "cashier_ip": "192.168.1.88",
-    "printer_old_ip": "192.168.1.50",
-    "printer_new_ip": "192.168.1.190",
+    "cashier_ip": "192.168.1.50",
     "printer_port": 9100,
-    "interface_name": "auto"
-  },
-  "extractor": {
-    "rule_id": "rule_arabic_v1",
-    "regex": "رقم الطلب:?\\s*(\\d+)"
+    "interface_name": "Ethernet 2",
+    "printer_new_ip": "192.168.1.190",
+    "printer_old_ip": "192.168.1.50"
   },
   "service": {
     "name": "QueueManager",
@@ -32,15 +34,19 @@
       "failure_period_minutes": 30
     }
   },
+  "extractor": {
+    "regex": "رقم الطلب:?\\s*#?\\s*(\\d+)",
+    "rule_id": "rule_arabic_v1",
+    "ocr": {
+      "enabled": true,
+      "regex": "#\\s*(\\d{4,})"
+    }
+  },
   "local_server": {
-    "http_port": 9200,
-    "websocket_port": 9200,
-    "bind_address": "0.0.0.0"
+    "bind_address": "0.0.0.0",
+    "websocket_port": 9299
   },
-  "logging": {
-    "level": "info",
-    "max_file_size_mb": 50,
-    "max_files": 7
-  },
-  "staff_pin": "113549"
+  "debug": {
+    "dump_raw_payloads": true
+  }
 }

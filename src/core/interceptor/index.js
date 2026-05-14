@@ -258,6 +258,32 @@ class PrintInterceptor extends EventEmitter {
       settled = true
       sock.setNoDelay(true)
 
+      // Flush buffered bytes to the printer regardless of whether the cashier
+      // session was already idle-timed-out and processed for extraction. A
+      // slow printer connect (sleep mode, ARP cache miss, ~1s wake-up) can
+      // race past our 500ms idle timeout — order gets extracted + published
+      // correctly, but the paper would never come out because we'd close the
+      // socket without flushing. Discovered 2026-05-14 after migrating to the
+      // installed service.
+      if (session.pendingForPrinter.length > 0) {
+        let flushOk = true
+        for (const chunk of session.pendingForPrinter) {
+          try { sock.write(chunk) } catch (e) {
+            this.logger.warn('flush to printer failed', { err: e.message })
+            flushOk = false
+            break
+          }
+        }
+        session.pendingForPrinter = []
+        if (flushOk && session.processed) {
+          this.logger.info('printer connect won after extraction — flushed buffered bytes')
+        }
+      }
+
+      if (this._printerStatus !== 'ok') {
+        this._setPrinterStatus('ok')
+      }
+
       if (session.processed) {
         try { sock.end() } catch { /* best effort */ }
         return
@@ -265,17 +291,6 @@ class PrintInterceptor extends EventEmitter {
 
       session.printerSock = sock
       session.printerState = 'connected'
-
-      while (session.pendingForPrinter.length > 0) {
-        try { sock.write(session.pendingForPrinter.shift()) } catch (e) {
-          this.logger.warn('flush to printer failed', { err: e.message })
-          break
-        }
-      }
-
-      if (this._printerStatus !== 'ok') {
-        this._setPrinterStatus('ok')
-      }
 
       sock.on('error', (err) => {
         this.logger.warn('printer socket error after connect', { err: err.message })

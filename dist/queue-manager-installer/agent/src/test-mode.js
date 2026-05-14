@@ -259,7 +259,7 @@ async function main () {
     logger: logger.child('test-mode-extractor')
   })
 
-  listener.on('order', ({ rawData, receivedAt, remoteIp }) => {
+  listener.on('order', async ({ rawData, receivedAt, remoteIp }) => {
     state.received_count += 1
 
     // Decode in all encodings for the diagnostic page
@@ -271,11 +271,12 @@ async function main () {
     // Run agent's extractor (single result) for parity with prod
     let agentExtraction
     try {
-      const r = extractor.extract(rawData)
+      const r = await extractor.extract(rawData)
       agentExtraction = {
         order_number: r.order_number,
         extracted: r.extracted,
-        encoding: r.encoding
+        encoding: r.encoding,
+        method: r.method
       }
     } catch (e) {
       agentExtraction = { error: e.message }

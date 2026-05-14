@@ -1,6 +1,7 @@
 'use strict'
 
 const path = require('path')
+const fsp = require('fs/promises')
 const { randomUUID } = require('crypto')
 
 const { loadConfig } = require('./config/loader')
@@ -12,6 +13,7 @@ const SyncQueue = require('./core/sync/queue')
 const SettingsListener = require('./core/sync/settings-listener')
 const CloudSyncClient = require('./core/sync/client')
 const OrderExtractor = require('./core/extractor')
+const OcrEngine = require('./core/extractor/ocr')
 const PrintInterceptor = require('./core/interceptor')
 const { createHttpServer, loadStatic } = require('./server/http-server')
 const StaffWebSocketServer = require('./server/ws-server')
@@ -76,6 +78,13 @@ async function main () {
     const ordersJsonl = new JsonlStore(path.join(dataDir, 'active_orders.jsonl'))
     const syncQueueJsonl = new JsonlStore(path.join(dataDir, 'sync_queue.jsonl'))
 
+    const dumpRawPayloads = !!(config.debug && config.debug.dump_raw_payloads)
+    const captureDir = dumpRawPayloads ? path.join(dataDir, 'captures') : null
+    if (captureDir) {
+      await fsp.mkdir(captureDir, { recursive: true })
+      logger.info('debug: raw payload dumping enabled', { dir: captureDir })
+    }
+
     const orderStore = new OrderStore({ store: ordersJsonl, logger: logger.child('orders') })
     await orderStore.load()
 
@@ -87,12 +96,23 @@ async function main () {
     const startedAt = Date.now()
 
     // ──────────────────────────────────────────────────────────
-    // OrderExtractor
+    // OrderExtractor (+ optional OCR fallback for raster prints)
     // ──────────────────────────────────────────────────────────
     const extractor = new OrderExtractor({
       regex: config.extractor.regex,
+      ocr: config.extractor.ocr,
       logger: logger.child('extractor')
     })
+    if (config.extractor.ocr && config.extractor.ocr.enabled) {
+      const ocrEngine = new OcrEngine({ logger: logger.child('ocr') })
+      extractor.setOcrEngine(ocrEngine)
+      registerCleanup(async () => {
+        try { await ocrEngine.close() } catch (e) {
+          logger.warn('ocr engine close failed', { err: e.message })
+        }
+      })
+      logger.info('OCR fallback enabled', { regex: config.extractor.ocr.regex })
+    }
 
     // ──────────────────────────────────────────────────────────
     // Local HTTP + WebSocket server (PRD #8 §4.1, §4.2)
@@ -259,7 +279,7 @@ async function main () {
 
     interceptor.on('order', async ({ rawData, receivedAt }) => {
       try {
-        const extraction = extractor.extract(rawData)
+        const extraction = await extractor.extract(rawData)
         const event = {
           event_id: randomUUID(),
           order_id: randomUUID(),
@@ -270,8 +290,18 @@ async function main () {
           at: receivedAt,
           source: 'local'
         }
-        logger.info(`new order #${event.order_number} (${extraction.extracted ? 'extracted' : 'fallback'})`,
+        logger.info(`new order #${event.order_number} (${extraction.method})`,
           { encoding: extraction.encoding, bytes: rawData.length })
+
+        if (captureDir) {
+          const ts = new Date(receivedAt).toISOString().replace(/[:.]/g, '-')
+          const tag = extraction.extracted ? `n${extraction.order_number}` : `fallback-${extraction.order_number}`
+          const filename = `${ts}--${tag}.bin`
+          fsp.writeFile(path.join(captureDir, filename), rawData).catch((e) => {
+            logger.warn('payload dump write failed', { err: e.message, filename })
+          })
+        }
+
         await applyAndFanOut(event)
       } catch (e) {
         logger.error('order intake failed', { err: e.message, stack: e.stack })

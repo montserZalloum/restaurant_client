@@ -94,6 +94,27 @@ function validate (config) {
     if (typeof config.extractor.regex !== 'string' || !isValidRegex(config.extractor.regex)) {
       err('extractor.regex', 'must be a valid regex string')
     }
+    if (config.extractor.ocr != null) {
+      if (typeof config.extractor.ocr !== 'object') {
+        err('extractor.ocr', 'must be an object if present')
+      } else {
+        if (config.extractor.ocr.enabled != null &&
+            typeof config.extractor.ocr.enabled !== 'boolean') {
+          err('extractor.ocr.enabled', 'must be boolean if present')
+        }
+        if (config.extractor.ocr.enabled === true) {
+          if (typeof config.extractor.ocr.regex !== 'string' ||
+              !isValidRegex(config.extractor.ocr.regex)) {
+            err('extractor.ocr.regex', 'required valid regex string when ocr.enabled')
+          }
+        } else if (config.extractor.ocr.regex != null) {
+          if (typeof config.extractor.ocr.regex !== 'string' ||
+              !isValidRegex(config.extractor.ocr.regex)) {
+            err('extractor.ocr.regex', 'must be valid regex string if present')
+          }
+        }
+      }
+    }
   }
 
   if (!config.local_server || typeof config.local_server !== 'object') {
@@ -110,6 +131,15 @@ function validate (config) {
   if (config.logging && typeof config.logging === 'object') {
     if (config.logging.level && !VALID_LOG_LEVELS.has(config.logging.level)) {
       err('logging.level', `must be one of ${[...VALID_LOG_LEVELS].join(', ')}`)
+    }
+  }
+
+  if (config.debug != null) {
+    if (typeof config.debug !== 'object') {
+      err('debug', 'must be an object if present')
+    } else if (config.debug.dump_raw_payloads != null &&
+               typeof config.debug.dump_raw_payloads !== 'boolean') {
+      err('debug.dump_raw_payloads', 'must be boolean if present')
     }
   }
 

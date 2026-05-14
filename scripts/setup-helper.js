@@ -24,6 +24,9 @@
  *   node setup-helper.js service-stop [--service-name=NAME] [--timeout=MS]
  *   node setup-helper.js service-uninstall --nssm=PATH [--service-name=NAME] [--timeout=MS]
  *   node setup-helper.js service-status [--service-name=NAME]
+ *   node setup-helper.js debug-capture-enable <config>
+ *   node setup-helper.js debug-capture-disable <config>
+ *   node setup-helper.js debug-capture-status <config>
  */
 
 const REQUIRED_NODE_MAJOR = 20
@@ -370,6 +373,56 @@ function cmdServiceStatus (args) {
   return 0
 }
 
+function readRawConfig (configPath) {
+  if (!configPath) fail('config path required')
+  let raw
+  try { raw = fs.readFileSync(configPath, 'utf8') } catch (e) {
+    fail(`cannot read ${configPath}: ${e.message}`)
+  }
+  let cfg
+  try { cfg = JSON.parse(raw) } catch (e) {
+    fail(`invalid JSON in ${configPath}: ${e.message}`)
+  }
+  return cfg
+}
+
+function setDumpFlag (configPath, value) {
+  const cfg = readRawConfig(configPath)
+  if (!cfg.debug || typeof cfg.debug !== 'object') cfg.debug = {}
+  const oldValue = !!cfg.debug.dump_raw_payloads
+  cfg.debug.dump_raw_payloads = value
+
+  if (oldValue === value) {
+    process.stdout.write(`UNCHANGED dump_raw_payloads=${value}\n`)
+    return 0
+  }
+
+  const { validate } = require(path.join(SRC, 'config', 'schema'))
+  const errs = validate(cfg)
+  if (errs.length) fail(`config validation failed after edit: ${errs.join(', ')}`)
+
+  fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2) + '\n')
+  process.stdout.write(`UPDATED dump_raw_payloads=${value}\n`)
+  process.stdout.write(`NOTE restart agent for change to take effect\n`)
+  return 0
+}
+
+function cmdDebugCaptureEnable (args) {
+  return setDumpFlag(args[0], true)
+}
+
+function cmdDebugCaptureDisable (args) {
+  return setDumpFlag(args[0], false)
+}
+
+function cmdDebugCaptureStatus (args) {
+  const cfg = readRawConfig(args[0])
+  const enabled = !!(cfg.debug && cfg.debug.dump_raw_payloads)
+  process.stdout.write(`DUMP_RAW_PAYLOADS=${enabled ? '1' : '0'}\n`)
+  process.stdout.write(`CONFIG=${args[0]}\n`)
+  return 0
+}
+
 // ── Dispatch ────────────────────────────────────────────
 
 const subcommand = process.argv[2]
@@ -390,7 +443,10 @@ const COMMANDS = {
   'service-install': cmdServiceInstall,
   'service-stop': cmdServiceStop,
   'service-uninstall': cmdServiceUninstall,
-  'service-status': cmdServiceStatus
+  'service-status': cmdServiceStatus,
+  'debug-capture-enable': cmdDebugCaptureEnable,
+  'debug-capture-disable': cmdDebugCaptureDisable,
+  'debug-capture-status': cmdDebugCaptureStatus
 }
 
 if (!subcommand || !COMMANDS[subcommand]) {

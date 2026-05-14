@@ -11,7 +11,11 @@
     "ws_url": "wss://cloud.skrterak.com/ws",
     "settings_channel": "settings:rest_0k6lu7"
   },
-  "logging": { "level": "info", "max_files": 7, "max_file_size_mb": 50 },
+  "logging": {
+    "level": "info",
+    "max_files": 7,
+    "max_file_size_mb": 50
+  },
   "network": {
     "cashier_ip": "192.168.1.50",
     "printer_port": 9100,
@@ -31,8 +35,12 @@
     }
   },
   "extractor": {
-    "regex": "رقم الطلب:?\\s*(\\d+)",
-    "rule_id": "rule_arabic_v1"
+    "regex": "رقم الطلب:?\\s*#?\\s*(\\d+)",
+    "rule_id": "rule_arabic_v1",
+    "ocr": {
+      "enabled": true,
+      "regex": "#\\s*(\\d{4,})"
+    }
   },
   "local_server": {
     "bind_address": "0.0.0.0",

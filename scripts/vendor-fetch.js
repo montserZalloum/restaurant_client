@@ -7,16 +7,23 @@
  * so `npm run package` can produce a fully self-contained installer
  * without any external setup.
  *
+ * Also fetches eng.traineddata (tessdata_fast) into
+ * src/core/extractor/tessdata/eng.traineddata.gz — but that file is checked
+ * into the repo, so this step is a no-op on a fresh clone unless --force is
+ * passed. Kept here for reproducibility: anyone can verify the committed
+ * tessdata matches the upstream tessdata_fast release.
+ *
  *   node scripts/vendor-fetch.js [--node=VERSION] [--force]
  *
  * Defaults:
  *   --node=20.18.0
- *   --force      re-download even if vendor/ already populated
+ *   --force      re-download even if already populated
  *
  * Output:
  *   vendor/node/             ← portable Node distribution (node.exe + npm + ...)
  *   vendor/nssm.exe          ← NSSM 2.24 (win64)
  *   vendor/.cache/           ← downloaded archives, kept for reuse on reruns
+ *   src/core/extractor/tessdata/eng.traineddata.gz  ← committed to repo (only refetched with --force)
  *
  * Trust boundary:
  *   - Node : SHA256-verified against the SHASUMS256.txt published alongside
@@ -30,15 +37,21 @@ const fs = require('fs')
 const path = require('path')
 const https = require('https')
 const crypto = require('crypto')
+const zlib = require('zlib')
 const { execFileSync } = require('child_process')
 
 const REPO_ROOT = path.resolve(__dirname, '..')
 const VENDOR_DIR = path.join(REPO_ROOT, 'vendor')
 const CACHE_DIR = path.join(VENDOR_DIR, '.cache')
+const TESSDATA_DIR = path.join(REPO_ROOT, 'src', 'core', 'extractor', 'tessdata')
 
 const DEFAULT_NODE_VERSION = '20.18.0'
 const NSSM_VERSION = '2.24'
 const NSSM_URL = `https://nssm.cc/release/nssm-${NSSM_VERSION}.zip`
+
+// tessdata_fast is the smaller, faster variant — sufficient for printed digits.
+// (tessdata = ~15MB standard, tessdata_best = ~30MB; we don't need either.)
+const TESSDATA_URL = 'https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata'
 
 function parseFlags (argv) {
   const flags = {}
@@ -220,6 +233,39 @@ async function fetchNssm (force) {
   return targetExe
 }
 
+async function fetchTessdata (force) {
+  // Tesseract.js (with langPath + cacheMethod='none') reads `{lang}.traineddata.gz`,
+  // not the plain `.traineddata`. tessdata_fast on github ships uncompressed,
+  // so we download once then gzip in place.
+  //
+  // The .gz is checked into the repo so the agent works offline by default and
+  // does NOT depend on this script for production builds. This function only
+  // runs to (a) populate a checkout that somehow has the file missing, or
+  // (b) re-pin to a fresh upstream release via --force.
+  const gzFile = path.join(TESSDATA_DIR, 'eng.traineddata.gz')
+
+  if (!force && fs.existsSync(gzFile)) {
+    const size = fs.statSync(gzFile).size
+    note(`tessdata already at ${gzFile} (${(size / 1024 / 1024).toFixed(1)} MB gz) — skipping (committed to repo; use --force to refetch from upstream)`)
+    return gzFile
+  }
+
+  fs.mkdirSync(TESSDATA_DIR, { recursive: true })
+  const tmpFile = path.join(TESSDATA_DIR, 'eng.traineddata.tmp')
+  note(`downloading ${TESSDATA_URL}`)
+  await fetch(TESSDATA_URL, tmpFile)
+  const rawHash = await sha256(tmpFile)
+  const rawSize = fs.statSync(tmpFile).size
+  note(`tessdata raw SHA256 : ${rawHash}  (size ${(rawSize / 1024 / 1024).toFixed(1)} MB; HTTPS-only trust)`)
+
+  note(`gzipping → eng.traineddata.gz`)
+  const gz = zlib.gzipSync(fs.readFileSync(tmpFile), { level: zlib.constants.Z_BEST_COMPRESSION })
+  fs.writeFileSync(gzFile, gz)
+  fs.unlinkSync(tmpFile)
+  note(`tessdata ready  : ${gzFile} (${(gz.length / 1024 / 1024).toFixed(1)} MB gz)`)
+  return gzFile
+}
+
 async function main () {
   const flags = parseFlags(process.argv.slice(2))
   const nodeVersion = flags.node || DEFAULT_NODE_VERSION
@@ -230,12 +276,14 @@ async function main () {
 
   await fetchNode(nodeVersion, force)
   await fetchNssm(force)
+  await fetchTessdata(force)
 
   process.stdout.write('\n=================================\n')
   process.stdout.write('Queue Manager — vendor binaries ready\n')
   process.stdout.write('=================================\n')
-  process.stdout.write(`Node : ${path.join(VENDOR_DIR, 'node', 'node.exe')}\n`)
-  process.stdout.write(`NSSM : ${path.join(VENDOR_DIR, 'nssm.exe')}\n`)
+  process.stdout.write(`Node     : ${path.join(VENDOR_DIR, 'node', 'node.exe')}\n`)
+  process.stdout.write(`NSSM     : ${path.join(VENDOR_DIR, 'nssm.exe')}\n`)
+  process.stdout.write(`tessdata : ${path.join(TESSDATA_DIR, 'eng.traineddata')}\n`)
   process.stdout.write('Next : npm run package\n')
 }
 

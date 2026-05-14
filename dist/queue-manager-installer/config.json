@@ -1,14 +1,14 @@
 {
   "version": 1,
   "restaurant": {
-    "id": "rest_knk8aa",
-    "name": "ABC restaurant",
-    "api_key": "ak_NT_rC1pCVMEW-vxmCd_A12X1-CNiJPzdG5RvKFfaHCI"
+    "id": "rest_a8f3k2",
+    "name": "مطعم الاختبار - فرع الجامعة",
+    "api_key": "00000000000000000000000000000000000000000000000000000000000000ff"
   },
   "cloud": {
-    "base_url": "http://192.168.1.249:3000",
-    "ws_url": "ws://192.168.1.249:3000/ws",
-    "settings_channel": "settings:rest_knk8aa"
+    "base_url": "https://api.queue-manager.com",
+    "ws_url": "wss://api.queue-manager.com/ws",
+    "settings_channel": "settings:rest_a8f3k2"
   },
   "network": {
     "cashier_ip": "192.168.1.10",
@@ -42,5 +42,5 @@
     "max_file_size_mb": 50,
     "max_files": 7
   },
-  "staff_pin": "113549"
+  "staff_pin": "483921"
 }
