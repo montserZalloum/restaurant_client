@@ -82,7 +82,7 @@ async function main () {
     const captureDir = dumpRawPayloads ? path.join(dataDir, 'captures') : null
     if (captureDir) {
       await fsp.mkdir(captureDir, { recursive: true })
-      logger.info('debug: raw payload dumping enabled', { dir: captureDir })
+      logger.warn('debug.dump_raw_payloads is ON — recording every order payload to disk; disable in production', { dir: captureDir })
     }
 
     const orderStore = new OrderStore({ store: ordersJsonl, logger: logger.child('orders') })

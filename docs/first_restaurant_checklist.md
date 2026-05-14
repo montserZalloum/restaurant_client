@@ -166,7 +166,11 @@ Look for:
 
 ## F. Operational hardening (do before leaving the site)
 
-- [ ] **Disable `debug.dump_raw_payloads`** unless we expect to need it for debugging in week 1:
+- [ ] **Verify `debug.dump_raw_payloads` is off** (the shipped config is `false` by default — this is a paranoia check that nothing got flipped on during the visit):
+  ```powershell
+  node C:\ProgramData\QueueManager\setup-helper.js debug-capture-status C:\ProgramData\QueueManager\config\config.json
+  ```
+  Expect `DUMP_RAW_PAYLOADS=0`. The boot banner will also print a `⚠ debug.dump_raw_payloads مُفعَّل` line in `stdout.log` if it is on — grep for it. If on, disable and restart:
   ```powershell
   node C:\ProgramData\QueueManager\setup-helper.js debug-capture-disable C:\ProgramData\QueueManager\config\config.json
   Restart-Service QueueManager

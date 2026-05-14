@@ -47,6 +47,6 @@
     "websocket_port": 9299
   },
   "debug": {
-    "dump_raw_payloads": true
+    "dump_raw_payloads": false
   }
 }
