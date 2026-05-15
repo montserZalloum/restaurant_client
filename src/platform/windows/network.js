@@ -170,6 +170,7 @@ module.exports = {
   getLocalIpAddresses,
   listIpv4OnInterface,
   hasIpAlias,
+  isVirtualInterface,
   detectActiveInterface,
   resolveInterfaceName,
   addIpAlias,

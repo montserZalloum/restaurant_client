@@ -10,6 +10,7 @@
  *
  * Usage:
  *   node setup-helper.js check-node
+ *   node setup-helper.js list-adapters [<config>]
  *   node setup-helper.js verify-config <config>
  *   node setup-helper.js verify-cloud <config>
  *   node setup-helper.js extract-vars <config>
@@ -33,6 +34,7 @@ const REQUIRED_NODE_MAJOR = 20
 
 const path = require('path')
 const fs = require('fs')
+const os = require('os')
 
 function findSrcRoot () {
   const candidates = [
@@ -91,6 +93,123 @@ function cmdCheckNode () {
     return 1
   }
   process.stdout.write(`OK ${v}\n`)
+  return 0
+}
+
+function ipv4ToInt (ip) {
+  if (typeof ip !== 'string') return null
+  const parts = ip.split('.').map(Number)
+  if (parts.length !== 4 || parts.some(p => !Number.isInteger(p) || p < 0 || p > 255)) return null
+  return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0
+}
+
+function sameSubnet (a, b, mask) {
+  const ai = ipv4ToInt(a)
+  const bi = ipv4ToInt(b)
+  const mi = ipv4ToInt(mask)
+  if (ai === null || bi === null || mi === null) return false
+  return (ai & mi) === (bi & mi)
+}
+
+function classifyAdapter (name) {
+  if (network.isVirtualInterface(name)) return 'virtual'
+  const lower = name.toLowerCase()
+  if (lower.startsWith('wi-fi') || lower.includes('wireless')) return 'wireless'
+  if (lower.startsWith('ethernet') || lower.startsWith('local area connection')) return 'wired'
+  return 'other'
+}
+
+function tryReadConfig (configPath) {
+  if (!configPath) return null
+  try {
+    process.env.QM_CONFIG_FILE = configPath
+    return loadConfig(configPath)
+  } catch {
+    return null
+  }
+}
+
+function cmdListAdapters (args) {
+  const cfg = tryReadConfig(args[0])
+  const printerIp = cfg && cfg.network && cfg.network.printer_new_ip
+  const configuredName = cfg && cfg.network && cfg.network.interface_name
+
+  const interfaces = os.networkInterfaces()
+  const rows = []
+  for (const [name, list] of Object.entries(interfaces)) {
+    const ipv4s = (list || []).filter(i => i.family === 'IPv4' && !i.internal)
+    rows.push({ name, ipv4s, kind: classifyAdapter(name) })
+  }
+
+  const order = { wired: 0, wireless: 1, other: 2, virtual: 3 }
+  rows.sort((a, b) => {
+    const kindDiff = order[a.kind] - order[b.kind]
+    if (kindDiff !== 0) return kindDiff
+    const ipDiff = (a.ipv4s.length === 0 ? 1 : 0) - (b.ipv4s.length === 0 ? 1 : 0)
+    if (ipDiff !== 0) return ipDiff
+    return a.name.localeCompare(b.name)
+  })
+
+  let recommended = null
+  for (const row of rows) {
+    if (row.kind !== 'wired' || row.ipv4s.length === 0) continue
+    if (printerIp) {
+      const onSubnet = row.ipv4s.some(ip => sameSubnet(ip.address, printerIp, ip.netmask))
+      if (!onSubnet) continue
+    }
+    recommended = row.name
+    break
+  }
+
+  const w = (s) => process.stdout.write(s + '\n')
+  w('')
+  w('Available network adapters on this machine:')
+  w('-----------------------------------------------------------------')
+  if (printerIp) w(`Printer IP from config: ${printerIp}`)
+  if (configuredName) w(`Currently configured  : "${configuredName}"`)
+  if (printerIp || configuredName) w('-----------------------------------------------------------------')
+  w('')
+
+  for (const row of rows) {
+    const tag = `[${row.kind}]`.padEnd(11)
+    const inCfg = configuredName === row.name ? '   (currently in config)' : ''
+    w(`${tag}  ${row.name}${inCfg}`)
+
+    if (row.ipv4s.length === 0) {
+      w('             (no IPv4 address - adapter not connected)')
+    } else {
+      for (const ip of row.ipv4s) {
+        let hint = ''
+        if (printerIp) {
+          hint = sameSubnet(ip.address, printerIp, ip.netmask)
+            ? '   <-- same subnet as printer'
+            : '   (different subnet from printer)'
+        }
+        w(`             IPv4: ${ip.address.padEnd(16)} mask ${ip.netmask}${hint}`)
+      }
+    }
+
+    if (row.name === recommended) {
+      w(`             >>> RECOMMENDED - set "interface_name": "${row.name}"`)
+    } else if (row.kind === 'wireless' && row.ipv4s.length > 0) {
+      w('             Wireless adapter. Avoid in production (netsh alias on DHCP Wi-Fi can break internet).')
+    } else if (row.kind === 'virtual' && row.ipv4s.length > 0) {
+      w('             Virtual adapter (Hyper-V/WSL/VPN/VM). Do not use.')
+    }
+    w('')
+  }
+
+  w('-----------------------------------------------------------------')
+  w('Tips:')
+  w('  - Copy the adapter name exactly (including spaces and capitalization).')
+  w('  - Place it in network.interface_name inside config.json.')
+  w('  - Prefer wired Ethernet over Wi-Fi.')
+  w('  - The adapter must be on the same subnet as the printer.')
+  if (!recommended && printerIp) {
+    w('')
+    w('WARNING: no wired adapter found on the printer subnet.')
+    w('         Check the cashier PC is wired and on the right LAN.')
+  }
   return 0
 }
 
@@ -430,6 +549,7 @@ const subargs = process.argv.slice(3)
 
 const COMMANDS = {
   'check-node': cmdCheckNode,
+  'list-adapters': cmdListAdapters,
   'verify-config': cmdVerifyConfig,
   'verify-cloud': cmdVerifyCloud,
   'extract-vars': cmdExtractVars,

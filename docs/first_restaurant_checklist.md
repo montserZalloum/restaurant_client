@@ -89,7 +89,12 @@ Built from lessons in `printer_integration_test_2026-05-12.md`, `cloud_integrati
 
 ### B.4 Network discovery sanity
 
-- [ ] `Get-NetAdapter` on the cashier PC — confirm the adapter name in your config matches one of the listed adapter names exactly. If the machine has VirtualBox / Hyper-V / VMware, the auto-detection rule from `src/platform/windows/network.js` may pick the wrong one — that's why we set it explicitly.
+- [ ] From the staged installer folder, run:
+  ```
+  node setup-helper.js list-adapters config.json
+  ```
+  Prints every adapter with its IPv4, flags virtual/wireless adapters, marks which ones share a subnet with the printer, and recommends one. Use the recommended name (or pick another wired adapter manually if it looks wrong) for `network.interface_name`. Copy the name exactly — case, spaces, and digits all matter.
+- [ ] Sanity check: `Get-NetAdapter` on the cashier PC — the adapter you picked must appear in that list exactly as written.
 - [ ] `Test-NetConnection -ComputerName <printer_ip> -Port 9100 -InformationLevel Quiet` returns `True` from the cashier PC.
 
 ### B.5 Identify what the cashier POS currently does
