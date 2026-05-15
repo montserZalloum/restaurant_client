@@ -1,4 +1,10 @@
 /node_modules/
+
+# npm's internal modules inside the bundled portable Node — not needed at
+# runtime (the agent only invokes node.exe, never npm.cmd, on the cashier PC)
+dist/queue-manager-installer/node/node_modules/
+vendor/node/node_modules/
+
 .runtime/
 tmp/
 *.log
