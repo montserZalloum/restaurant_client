@@ -145,6 +145,7 @@ function printBanner (config, platform, healthResult, opts = {}) {
   const wsPort = config.local_server.websocket_port
   const bindAddr = config.local_server.bind_address || '0.0.0.0'
   const cashierPort = (config.network && config.network.printer_port) || '?'
+  const dumpRawPayloads = !!(config.debug && config.debug.dump_raw_payloads)
 
   let lan = []
   try { lan = platform.getLocalIpAddresses() } catch { /* ignore */ }
@@ -161,14 +162,19 @@ function printBanner (config, platform, healthResult, opts = {}) {
     `${sym(c.jsonl.active_orders && c.jsonl.active_orders.ok, true)} ملفات التخزين: ${activeCount} طلب نشط`,
     `${sym(c.cloud && c.cloud.ok, true)} السحابة: ${c.cloud && c.cloud.ok ? 'متصل' : 'غير متصل'}`,
     `${sym(c.printer && c.printer.ok, true)} الطابعة: ${c.printer && c.printer.ok ? 'متصل' : 'غير متصل'}`,
-    `${sym(c.ws_port.ok)} بورت WebSocket المحلي ${wsPort}: ${c.ws_port.ok ? 'متاح' : 'غير متاح'}`,
+    `${sym(c.ws_port.ok)} بورت WebSocket المحلي ${wsPort}: ${c.ws_port.ok ? 'متاح' : 'غير متاح'}`
+  ]
+  if (dumpRawPayloads) {
+    lines.push('⚠ debug.dump_raw_payloads مُفعَّل — يُكتب كل طلب على القرص (عطّله للإنتاج)')
+  }
+  lines.push(
     '═══════════════════════════════════════════════',
     'الخدمة جاهزة. تستمع على:',
     `  - ${bindAddr}:${cashierPort} (طلبات الكاشير)`,
     `  - ${bindAddr}:${wsPort} (WebSocket للموظف)`,
     `LAN IP المُعلَن للسحابة: ${lanStr}`,
     '═══════════════════════════════════════════════'
-  ]
+  )
   for (const line of lines) process.stdout.write(line + '\n')
 }
 

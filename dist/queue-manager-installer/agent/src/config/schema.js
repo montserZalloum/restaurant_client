@@ -113,6 +113,10 @@ function validate (config) {
             err('extractor.ocr.regex', 'must be valid regex string if present')
           }
         }
+        if (config.extractor.ocr.allow_cdn_fallback != null &&
+            typeof config.extractor.ocr.allow_cdn_fallback !== 'boolean') {
+          err('extractor.ocr.allow_cdn_fallback', 'must be boolean if present')
+        }
       }
     }
   }

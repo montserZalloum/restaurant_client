@@ -82,7 +82,7 @@ async function main () {
     const captureDir = dumpRawPayloads ? path.join(dataDir, 'captures') : null
     if (captureDir) {
       await fsp.mkdir(captureDir, { recursive: true })
-      logger.info('debug: raw payload dumping enabled', { dir: captureDir })
+      logger.warn('debug.dump_raw_payloads is ON — recording every order payload to disk; disable in production', { dir: captureDir })
     }
 
     const orderStore = new OrderStore({ store: ordersJsonl, logger: logger.child('orders') })
@@ -104,14 +104,30 @@ async function main () {
       logger: logger.child('extractor')
     })
     if (config.extractor.ocr && config.extractor.ocr.enabled) {
-      const ocrEngine = new OcrEngine({ logger: logger.child('ocr') })
-      extractor.setOcrEngine(ocrEngine)
-      registerCleanup(async () => {
-        try { await ocrEngine.close() } catch (e) {
-          logger.warn('ocr engine close failed', { err: e.message })
-        }
-      })
-      logger.info('OCR fallback enabled', { regex: config.extractor.ocr.regex })
+      const allowCdnFallback = !!config.extractor.ocr.allow_cdn_fallback
+      if (!OcrEngine.hasBundledTessdata() && !allowCdnFallback) {
+        logger.error(
+          'OCR enabled in config but bundled tessdata is missing — OCR DISABLED for this run. ' +
+          'Raster-only orders will fall back to local serial numbers until the installer is rebuilt with the tessdata file present. ' +
+          'Fix: run "npm run vendor" then "npm run package", or check eng.traineddata.gz into the repo.',
+          { expected_path: OcrEngine.bundledTessdataPath() }
+        )
+      } else {
+        const ocrEngine = new OcrEngine({
+          logger: logger.child('ocr'),
+          allowCdnFallback
+        })
+        extractor.setOcrEngine(ocrEngine)
+        registerCleanup(async () => {
+          try { await ocrEngine.close() } catch (e) {
+            logger.warn('ocr engine close failed', { err: e.message })
+          }
+        })
+        logger.info('OCR fallback enabled', {
+          regex: config.extractor.ocr.regex,
+          source: allowCdnFallback && !OcrEngine.hasBundledTessdata() ? 'CDN (dev)' : 'bundled'
+        })
+      }
     }
 
     // ──────────────────────────────────────────────────────────

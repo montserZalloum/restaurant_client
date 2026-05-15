@@ -10,30 +10,43 @@ const noopLogger = {
 
 const BUNDLED_TESSDATA_DIR = path.join(__dirname, 'tessdata')
 
+function bundledTessdataPath (lang) {
+  return path.join(BUNDLED_TESSDATA_DIR, `${lang}.traineddata.gz`)
+}
+
 function findBundledTessdata (lang) {
   // Tesseract.js looks for `{lang}.traineddata.gz` at langPath when cacheMethod='none'.
-  const candidate = path.join(BUNDLED_TESSDATA_DIR, `${lang}.traineddata.gz`)
-  return fs.existsSync(candidate) ? BUNDLED_TESSDATA_DIR : null
+  return fs.existsSync(bundledTessdataPath(lang)) ? BUNDLED_TESSDATA_DIR : null
 }
 
 /**
  * Long-lived Tesseract.js worker wrapper.
  *
  * Tessdata strategy:
- *   - If src/core/extractor/tessdata/{lang}.traineddata exists (populated by
- *     `npm run vendor`), the worker reads from there with cacheMethod='none'
- *     so it never touches the CDN — usable offline.
- *   - Otherwise it falls back to Tesseract.js defaults (downloads from CDN
- *     on first use, caches under the user's temp dir). Useful in dev when
- *     vendor hasn't been run yet.
+ *   - Bundled tessdata at src/core/extractor/tessdata/{lang}.traineddata.gz is
+ *     the only supported source in production. It is checked into the repo
+ *     and copied into the installer payload by scripts/package.js.
+ *   - If the bundled file is missing AND allowCdnFallback is true, the worker
+ *     falls back to Tesseract.js defaults (CDN download, temp-dir cache).
+ *     This is intended for dev only — set extractor.ocr.allow_cdn_fallback
+ *     in config to opt in. The default is to refuse and throw.
  */
 class OcrEngine {
-  constructor ({ logger, lang = 'eng', charWhitelist = '0123456789#:/ .-' } = {}) {
+  constructor ({ logger, lang = 'eng', charWhitelist = '0123456789#:/ .-', allowCdnFallback = false } = {}) {
     this.logger = logger || noopLogger
     this.lang = lang
     this.charWhitelist = charWhitelist
+    this.allowCdnFallback = !!allowCdnFallback
     this._worker = null
     this._initPromise = null
+  }
+
+  static hasBundledTessdata (lang = 'eng') {
+    return fs.existsSync(bundledTessdataPath(lang))
+  }
+
+  static bundledTessdataPath (lang = 'eng') {
+    return bundledTessdataPath(lang)
   }
 
   async _ensureWorker () {
@@ -43,9 +56,16 @@ class OcrEngine {
     this._initPromise = (async () => {
       const { createWorker } = require('tesseract.js')
       const langPath = findBundledTessdata(this.lang)
+      if (!langPath && !this.allowCdnFallback) {
+        throw new Error(
+          `OCR worker init refused: bundled tessdata not found at ${bundledTessdataPath(this.lang)}. ` +
+          `The file is expected to be checked into the repo; if it is missing, run "npm run vendor" to fetch it. ` +
+          `To opt into Tesseract.js CDN download (dev only), set extractor.ocr.allow_cdn_fallback: true in config.`
+        )
+      }
       this.logger.info('initializing OCR worker', {
         lang: this.lang,
-        source: langPath ? 'bundled' : 'CDN (no bundled tessdata found — run "npm run vendor")'
+        source: langPath ? 'bundled' : 'CDN (allow_cdn_fallback=true; dev mode)'
       })
       const t0 = Date.now()
       const workerOptions = {}
