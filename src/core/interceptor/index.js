@@ -21,7 +21,7 @@ class PrintInterceptor extends EventEmitter {
     cashierIp,
     targetHost,
     targetPort,
-    maxBufferBytes = 64 * 1024,
+    maxBufferBytes = 512 * 1024,
     idleTimeoutMs = 500,
     retryDelayMs = 200,
     maxRetries = 3,
@@ -153,32 +153,38 @@ class PrintInterceptor extends EventEmitter {
   _onCashierData (session, chunk) {
     if (session.processed) return
 
-    let usable = chunk
-    const remaining = this.maxBufferBytes - session.totalBytes
-    if (remaining <= 0) {
-      this.logger.warn('print payload exceeded max bytes — dropping further data', {
-        max: this.maxBufferBytes
-      })
-      return
-    }
-    if (chunk.length > remaining) {
-      this.logger.warn('print payload would exceed max bytes — truncating chunk', {
-        max: this.maxBufferBytes
-      })
-      usable = chunk.slice(0, remaining)
-    }
-
-    session.buffers.push(usable)
-    session.totalBytes += usable.length
-
+    // Forward the FULL chunk to the printer — the maxBufferBytes cap below
+    // only bounds our in-memory extraction buffer (for regex/OCR), not what
+    // the printer receives. A large raster receipt (>64 KB) used to be
+    // silently truncated on the forward pipe too, so the printer got an
+    // incomplete bitmap with no cut command and never produced paper.
     if (session.printerState === 'connected') {
-      try { session.printerSock.write(usable) } catch (e) {
+      try { session.printerSock.write(chunk) } catch (e) {
         this.logger.warn('write to printer failed mid-stream', { err: e.message })
       }
     } else if (session.printerState === 'connecting') {
-      session.pendingForPrinter.push(usable)
+      session.pendingForPrinter.push(chunk)
     }
     // if failed: drop the chunk for forwarding (still buffered for extraction)
+
+    // Append to the extraction buffer up to the cap; drop the overflow.
+    const remaining = this.maxBufferBytes - session.totalBytes
+    if (remaining > 0) {
+      const usable = chunk.length > remaining ? chunk.slice(0, remaining) : chunk
+      session.buffers.push(usable)
+      session.totalBytes += usable.length
+      if (chunk.length > remaining && !session.extractionCapWarned) {
+        session.extractionCapWarned = true
+        this.logger.warn('extraction buffer cap reached — extra payload bytes still forwarded to printer but not used for extraction', {
+          max: this.maxBufferBytes
+        })
+      }
+    } else if (!session.extractionCapWarned) {
+      session.extractionCapWarned = true
+      this.logger.warn('extraction buffer cap reached — extra payload bytes still forwarded to printer but not used for extraction', {
+        max: this.maxBufferBytes
+      })
+    }
 
     this._resetIdleTimer(session)
   }
